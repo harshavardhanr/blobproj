@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Blob Creature</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'DM Mono', monospace;
+            touch-action: none;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .room-code {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            letter-spacing: 2px;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .room-code:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .status {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+        
+        .status.connected {
+            color: #4ade80;
+        }
+        
+        .status.has-creature {
+            color: #facc15;
+        }
+        
+        .join-section {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            pointer-events: auto;
+        }
+        
+        .join-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            letter-spacing: 2px;
+            width: 120px;
+            text-transform: uppercase;
+        }
+        
+        .join-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .join-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            color: #000;
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .join-btn:hover {
+            background: #fff;
+        }
+        
+        .instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 11px;
+            letter-spacing: 1px;
+            line-height: 1.6;
+        }
+        
+        .bump-indicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.1s, transform 0.1s;
+            pointer-events: none;
+        }
+        
+        .bump-indicator.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+            border-color: #4ade80;
+        }
+        
+        .edge-glow {
+            position: fixed;
+            background: radial-gradient(ellipse, rgba(255,255,255,0.3) 0%, transparent 70%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .edge-glow.left { top: 0; left: -50px; width: 100px; height: 100%; }
+        .edge-glow.right { top: 0; right: -50px; width: 100px; height: 100%; }
+        .edge-glow.top { left: 0; top: -50px; width: 100%; height: 100px; }
+        .edge-glow.bottom { left: 0; bottom: -50px; width: 100%; height: 100px; }
+        
+        .edge-glow.active { opacity: 1; }
+        
+        .peer-count {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="bump-indicator" id="bumpIndicator"></div>
+    
+    <div class="edge-glow left" id="edgeLeft"></div>
+    <div class="edge-glow right" id="edgeRight"></div>
+    <div class="edge-glow top" id="edgeTop"></div>
+    <div class="edge-glow bottom" id="edgeBottom"></div>
+    
+    <div class="ui">
+        <div class="room-info">
+            <div class="room-code" id="roomCode" title="Click to copy">----</div>
+            <div class="status" id="status">Initializing...</div>
+        </div>
+        <div class="join-section">
+            <input type="text" class="join-input" id="joinInput" placeholder="CODE" maxlength="4">
+            <button class="join-btn" id="joinBtn">JOIN</button>
+        </div>
+    </div>
+    
+    <div class="peer-count" id="peerCount">0 peers</div>
+    
+    <div class="instructions">
+        <span id="instructionText">Share your code with nearby devices • Bump devices together to transfer the creature</span>
+    </div>
+    
+    <!-- PeerJS library for WebRTC -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let hasCreature = true; // Does this device have the creature?
+        let connections = []; // Connected peers
+        let myPeer = null;
+        let myRoomCode = '';
+        
+        // Bump detection
+        let lastAcceleration = { x: 0, y: 0, z: 0 };
+        let bumpThreshold = 25;
+        let lastBumpTime = 0;
+        let bumpCooldown = 1000; // 1 second cooldown
+        let pendingTransfer = false;
+        let transferDirection = null;
+        
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Generate 4-character room code
+        function generateRoomCode() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+            let code = '';
+            for (let i = 0; i < 4; i++) {
+                code += chars[Math.floor(Math.random() * chars.length)];
+            }
+            return code;
+        }
+        
+        // Blob creature
+        const blob = {
+            x: 0,
+            y: 0,
+            baseRadius: 60,
+            numPoints: 16,
+            points: [],
+            velocityX: (Math.random() - 0.5) * 1.5,
+            velocityY: (Math.random() - 0.5) * 1.5,
+            squishX: 1,
+            squishY: 1,
+            targetSquishX: 1,
+            targetSquishY: 1,
+            visible: true,
+            enteringFrom: null,
+            exitingTo: null
+        };
+        
+        // Start in center
+        blob.x = width / 2;
+        blob.y = height / 2;
+        
+        // Initialize blob points
+        for (let i = 0; i < blob.numPoints; i++) {
+            blob.points.push({
+                angle: (Math.PI * 2 / blob.numPoints) * i,
+                radiusOffset: 0,
+                speed: 0.5 + Math.random() * 1.5,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
+        
+        // Edge detection
+        function getEdgeProximity() {
+            const margin = blob.baseRadius * 1.5;
+            const edges = {
+                left: blob.x < margin,
+                right: blob.x > width - margin,
+                top: blob.y < margin,
+                bottom: blob.y > height - margin
+            };
+            return edges;
+        }
+        
+        function updateEdgeGlow() {
+            if (!hasCreature) {
+                document.querySelectorAll('.edge-glow').forEach(el => el.classList.remove('active'));
+                return;
+            }
+            
+            const edges = getEdgeProximity();
+            document.getElementById('edgeLeft').classList.toggle('active', edges.left);
+            document.getElementById('edgeRight').classList.toggle('active', edges.right);
+            document.getElementById('edgeTop').classList.toggle('active', edges.top);
+            document.getElementById('edgeBottom').classList.toggle('active', edges.bottom);
+        }
+        
+        function getCurrentEdge() {
+            const edges = getEdgeProximity();
+            if (edges.left) return 'left';
+            if (edges.right) return 'right';
+            if (edges.top) return 'top';
+            if (edges.bottom) return 'bottom';
+            return null;
+        }
+        
+        // Initialize PeerJS
+        function initPeer() {
+            myRoomCode = generateRoomCode();
+            document.getElementById('roomCode').textContent = myRoomCode;
+            
+            myPeer = new Peer('blob-' + myRoomCode, {
+                debug: 0
+            });
+            
+            myPeer.on('open', (id) => {
+                updateStatus('Ready');
+            });
+            
+            myPeer.on('connection', (conn) => {
+                setupConnection(conn);
+            });
+            
+            myPeer.on('error', (err) => {
+                console.error('Peer error:', err);
+                if (err.type === 'unavailable-id') {
+                    // Code already taken, generate new one
+                    myRoomCode = generateRoomCode();
+                    document.getElementById('roomCode').textContent = myRoomCode;
+                    myPeer.destroy();
+                    initPeer();
+                }
+            });
+        }
+        
+        function setupConnection(conn) {
+            conn.on('open', () => {
+                connections.push(conn);
+                updatePeerCount();
+                updateStatus('Connected');
+                
+                // Send current state
+                conn.send({
+                    type: 'state',
+                    hasCreature: hasCreature
+                });
+            });
+            
+            conn.on('data', (data) => {
+                handleMessage(data, conn);
+            });
+            
+            conn.on('close', () => {
+                connections = connections.filter(c => c !== conn);
+                updatePeerCount();
+                if (connections.length === 0) {
+                    updateStatus('Ready');
+                }
+            });
+        }
+        
+        function connectToPeer(code) {
+            const peerId = 'blob-' + code.toUpperCase();
+            const conn = myPeer.connect(peerId);
+            setupConnection(conn);
+        }
+        
+        function handleMessage(data, fromConn) {
+            switch (data.type) {
+                case 'state':
+                    // Peer shared their state
+                    break;
+                    
+                case 'bump':
+                    // Other device detected a bump
+                    handleRemoteBump(data, fromConn);
+                    break;
+                    
+                case 'creature-transfer':
+                    // Receiving the creature!
+                    receiveCreature(data);
+                    break;
+                    
+                case 'creature-received':
+                    // Confirmation that creature was received
+                    hasCreature = false;
+                    updateCreatureStatus();
+                    break;
+            }
+        }
+        
+        function handleRemoteBump(data, fromConn) {
+            const now = Date.now();
+            const timeDiff = Math.abs(now - data.timestamp);
+            
+            // If bumps happened within 500ms of each other, it's a valid transfer
+            if (timeDiff < 500 && hasCreature) {
+                const edge = getCurrentEdge();
+                if (edge) {
+                    // Transfer the creature!
+                    transferCreature(fromConn, edge);
+                }
+            }
+        }
+        
+        function transferCreature(toConn, fromEdge) {
+            if (!hasCreature) return;
+            
+            // Animate creature exiting
+            blob.exitingTo = fromEdge;
+            
+            setTimeout(() => {
+                toConn.send({
+                    type: 'creature-transfer',
+                    fromEdge: fromEdge,
+                    velocity: { x: blob.velocityX, y: blob.velocityY }
+                });
+            }, 300);
+        }
+        
+        function receiveCreature(data) {
+            hasCreature = true;
+            updateCreatureStatus();
+            
+            // Position creature entering from opposite edge
+            const oppositeEdge = {
+                'left': 'right',
+                'right': 'left',
+                'top': 'bottom',
+                'bottom': 'top'
+            }[data.fromEdge];
+            
+            blob.enteringFrom = oppositeEdge;
+            
+            // Set entry position
+            switch (oppositeEdge) {
+                case 'left':
+                    blob.x = -blob.baseRadius;
+                    blob.y = height / 2;
+                    blob.velocityX = Math.abs(data.velocity?.x || 2);
+                    blob.velocityY = data.velocity?.y || 0;
+                    break;
+                case 'right':
+                    blob.x = width + blob.baseRadius;
+                    blob.y = height / 2;
+                    blob.velocityX = -Math.abs(data.velocity?.x || 2);
+                    blob.velocityY = data.velocity?.y || 0;
+                    break;
+                case 'top':
+                    blob.x = width / 2;
+                    blob.y = -blob.baseRadius;
+                    blob.velocityX = data.velocity?.x || 0;
+                    blob.velocityY = Math.abs(data.velocity?.y || 2);
+                    break;
+                case 'bottom':
+                    blob.x = width / 2;
+                    blob.y = height + blob.baseRadius;
+                    blob.velocityX = data.velocity?.x || 0;
+                    blob.velocityY = -Math.abs(data.velocity?.y || 2);
+                    break;
+            }
+            
+            blob.visible = true;
+            
+            // Send confirmation
+            connections.forEach(conn => {
+                conn.send({ type: 'creature-received' });
+            });
+        }
+        
+        // Accelerometer for bump detection
+        function initMotion() {
+            if (typeof DeviceMotionEvent !== 'undefined') {
+                // iOS 13+ requires permission
+                if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                    // Will request on first interaction
+                    document.body.addEventListener('click', requestMotionPermission, { once: true });
+                } else {
+                    window.addEventListener('devicemotion', handleMotion);
+                }
+            }
+        }
+        
+        function requestMotionPermission() {
+            DeviceMotionEvent.requestPermission()
+                .then(response => {
+                    if (response === 'granted') {
+                        window.addEventListener('devicemotion', handleMotion);
+                    }
+                })
+                .catch(console.error);
+        }
+        
+        function handleMotion(event) {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            
+            const deltaX = Math.abs(acc.x - lastAcceleration.x);
+            const deltaY = Math.abs(acc.y - lastAcceleration.y);
+            const deltaZ = Math.abs(acc.z - lastAcceleration.z);
+            const totalDelta = deltaX + deltaY + deltaZ;
+            
+            lastAcceleration = { x: acc.x, y: acc.y, z: acc.z };
+            
+            const now = Date.now();
+            if (totalDelta > bumpThreshold && now - lastBumpTime > bumpCooldown) {
+                lastBumpTime = now;
+                onBumpDetected();
+            }
+        }
+        
+        function onBumpDetected() {
+            // Show visual feedback
+            const indicator = document.getElementById('bumpIndicator');
+            indicator.classList.add('active');
+            setTimeout(() => indicator.classList.remove('active'), 200);
+            
+            // Broadcast bump to all connected peers
+            const bumpData = {
+                type: 'bump',
+                timestamp: Date.now(),
+                edge: getCurrentEdge()
+            };
+            
+            connections.forEach(conn => {
+                conn.send(bumpData);
+            });
+            
+            // Check if we should receive a creature (if we don't have one)
+            if (!hasCreature) {
+                // Signal readiness to receive
+            }
+        }
+        
+        // Fallback: Double-tap to simulate bump (for desktop testing)
+        let lastTapTime = 0;
+        canvas.addEventListener('click', (e) => {
+            const now = Date.now();
+            if (now - lastTapTime < 300) {
+                // Double tap detected
+                onBumpDetected();
+            }
+            lastTapTime = now;
+        });
+        
+        // Keyboard shortcut: Space to simulate bump
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                onBumpDetected();
+            }
+        });
+        
+        function updateStatus(status) {
+            const el = document.getElementById('status');
+            el.textContent = status;
+            el.className = 'status';
+            if (connections.length > 0) el.classList.add('connected');
+        }
+        
+        function updateCreatureStatus() {
+            const el = document.getElementById('status');
+            if (hasCreature) {
+                el.classList.add('has-creature');
+                document.getElementById('instructionText').textContent = 
+                    'Creature is here! • Bump devices together at the edge to transfer';
+            } else {
+                el.classList.remove('has-creature');
+                document.getElementById('instructionText').textContent = 
+                    'Waiting for creature... • Bump devices together to receive';
+            }
+        }
+        
+        function updatePeerCount() {
+            document.getElementById('peerCount').textContent = 
+                connections.length + ' peer' + (connections.length !== 1 ? 's' : '');
+        }
+        
+        // UI Events
+        document.getElementById('roomCode').addEventListener('click', () => {
+            navigator.clipboard?.writeText(myRoomCode);
+            const el = document.getElementById('roomCode');
+            const original = el.textContent;
+            el.textContent = 'COPIED';
+            setTimeout(() => el.textContent = original, 1000);
+        });
+        
+        document.getElementById('joinBtn').addEventListener('click', () => {
+            const code = document.getElementById('joinInput').value.trim();
+            if (code.length === 4) {
+                connectToPeer(code);
+                document.getElementById('joinInput').value = '';
+            }
+        });
+        
+        document.getElementById('joinInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('joinBtn').click();
+            }
+        });
+        
+        // Animation
+        function update(time) {
+            if (!hasCreature) {
+                blob.visible = false;
+                return;
+            }
+            
+            blob.visible = true;
+            
+            // Handle entering animation
+            if (blob.enteringFrom) {
+                const entered = (
+                    blob.x > blob.baseRadius && 
+                    blob.x < width - blob.baseRadius &&
+                    blob.y > blob.baseRadius && 
+                    blob.y < height - blob.baseRadius
+                );
+                if (entered) {
+                    blob.enteringFrom = null;
+                }
+            }
+            
+            // Handle exiting animation
+            if (blob.exitingTo) {
+                switch (blob.exitingTo) {
+                    case 'left': blob.x -= 8; break;
+                    case 'right': blob.x += 8; break;
+                    case 'top': blob.y -= 8; break;
+                    case 'bottom': blob.y += 8; break;
+                }
+                
+                const exited = (
+                    blob.x < -blob.baseRadius * 2 || 
+                    blob.x > width + blob.baseRadius * 2 ||
+                    blob.y < -blob.baseRadius * 2 || 
+                    blob.y > height + blob.baseRadius * 2
+                );
+                
+                if (exited) {
+                    blob.exitingTo = null;
+                    hasCreature = false;
+                    updateCreatureStatus();
+                }
+                return;
+            }
+            
+            // Normal movement
+            blob.x += blob.velocityX;
+            blob.y += blob.velocityY;
+            
+            // Bounce off edges (only if not transferring)
+            const margin = blob.baseRadius;
+            
+            if (blob.x <= margin) {
+                blob.x = margin;
+                blob.velocityX *= -1;
+                blob.targetSquishX = 0.94;
+                blob.targetSquishY = 1.06;
+            } else if (blob.x >= width - margin) {
+                blob.x = width - margin;
+                blob.velocityX *= -1;
+                blob.targetSquishX = 0.94;
+                blob.targetSquishY = 1.06;
+            }
+            
+            if (blob.y <= margin) {
+                blob.y = margin;
+                blob.velocityY *= -1;
+                blob.targetSquishX = 1.06;
+                blob.targetSquishY = 0.94;
+            } else if (blob.y >= height - margin) {
+                blob.y = height - margin;
+                blob.velocityY *= -1;
+                blob.targetSquishX = 1.06;
+                blob.targetSquishY = 0.94;
+            }
+            
+            // Smooth squish recovery
+            blob.squishX += (blob.targetSquishX - blob.squishX) * 0.1;
+            blob.squishY += (blob.targetSquishY - blob.squishY) * 0.1;
+            blob.targetSquishX += (1 - blob.targetSquishX) * 0.05;
+            blob.targetSquishY += (1 - blob.targetSquishY) * 0.05;
+            
+            // Random direction changes
+            if (Math.random() < 0.005) {
+                blob.velocityX += (Math.random() - 0.5) * 1;
+                blob.velocityY += (Math.random() - 0.5) * 1;
+            }
+            
+            // Limit speed
+            const speed = Math.sqrt(blob.velocityX ** 2 + blob.velocityY ** 2);
+            const maxSpeed = 2;
+            const minSpeed = 0.8;
+            if (speed > maxSpeed) {
+                blob.velocityX = (blob.velocityX / speed) * maxSpeed;
+                blob.velocityY = (blob.velocityY / speed) * maxSpeed;
+            } else if (speed < minSpeed && speed > 0) {
+                blob.velocityX = (blob.velocityX / speed) * minSpeed;
+                blob.velocityY = (blob.velocityY / speed) * minSpeed;
+            }
+            
+            // Update blob shape
+            for (let point of blob.points) {
+                point.radiusOffset = Math.sin(time * 0.001 * point.speed + point.phase) * 0.08;
+            }
+            
+            updateEdgeGlow();
+        }
+        
+        function draw(time) {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            if (!blob.visible) return;
+            
+            ctx.save();
+            ctx.translate(blob.x, blob.y);
+            ctx.scale(blob.squishX, blob.squishY);
+            
+            const blobPoints = blob.points.map((point) => {
+                const radius = blob.baseRadius * (1 + point.radiusOffset);
+                return {
+                    x: Math.cos(point.angle + time * 0.0001) * radius,
+                    y: Math.sin(point.angle + time * 0.0001) * radius
+                };
+            });
+            
+            ctx.beginPath();
+            
+            if (blobPoints.length >= 3) {
+                ctx.moveTo(
+                    (blobPoints[0].x + blobPoints[blobPoints.length - 1].x) / 2,
+                    (blobPoints[0].y + blobPoints[blobPoints.length - 1].y) / 2
+                );
+                
+                for (let i = 0; i < blobPoints.length; i++) {
+                    const p1 = blobPoints[i];
+                    const p2 = blobPoints[(i + 1) % blobPoints.length];
+                    const midX = (p1.x + p2.x) / 2;
+                    const midY = (p1.y + p2.y) / 2;
+                    ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
+                }
+                
+                ctx.closePath();
+            }
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function animate(time) {
+            update(time);
+            draw(time);
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize
+        initPeer();
+        initMotion();
+        updateCreatureStatus();
+        animate(0);
+    </script>
+</body>
+</html>
