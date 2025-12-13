@@ -375,7 +375,7 @@
                     
                 case 'creature-transfer':
                     // Receiving the creature!
-                    receiveCreature(data);
+                    receiveCreature(data, fromConn);
                     break;
                     
                 case 'creature-received':
@@ -415,10 +415,10 @@
             }, 300);
         }
         
-        function receiveCreature(data) {
+        function receiveCreature(data, fromConn) {
             hasCreature = true;
             updateCreatureStatus();
-            
+
             // Position creature entering from opposite edge
             const oppositeEdge = {
                 'left': 'right',
@@ -426,9 +426,9 @@
                 'top': 'bottom',
                 'bottom': 'top'
             }[data.fromEdge];
-            
+
             blob.enteringFrom = oppositeEdge;
-            
+
             // Set entry position
             switch (oppositeEdge) {
                 case 'left':
@@ -456,13 +456,13 @@
                     blob.velocityY = -Math.abs(data.velocity?.y || 2);
                     break;
             }
-            
+
             blob.visible = true;
-            
-            // Send confirmation
-            connections.forEach(conn => {
-                conn.send({ type: 'creature-received' });
-            });
+
+            // Send confirmation back to the sender only
+            if (fromConn) {
+                fromConn.send({ type: 'creature-received' });
+            }
         }
         
         // Accelerometer for bump detection
