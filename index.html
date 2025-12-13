@@ -212,9 +212,9 @@
         
         // Bump detection
         let lastAcceleration = { x: 0, y: 0, z: 0 };
-        let bumpThreshold = 25;
+        let bumpThreshold = 15; // Lower threshold = more sensitive
         let lastBumpTime = 0;
-        let bumpCooldown = 1000; // 1 second cooldown
+        let bumpCooldown = 800; // Reduced cooldown for faster detection
         let pendingTransfer = false;
         let transferDirection = null;
         
@@ -242,8 +242,8 @@
             baseRadius: 60,
             numPoints: 16,
             points: [],
-            velocityX: (Math.random() - 0.5) * 1.5,
-            velocityY: (Math.random() - 0.5) * 1.5,
+            velocityX: (Math.random() - 0.5) * 1.8,
+            velocityY: (Math.random() - 0.5) * 1.8,
             squishX: 1,
             squishY: 1,
             targetSquishX: 1,
@@ -375,7 +375,7 @@
                     
                 case 'creature-transfer':
                     // Receiving the creature!
-                    receiveCreature(data);
+                    receiveCreature(data, fromConn);
                     break;
                     
                 case 'creature-received':
@@ -415,10 +415,10 @@
             }, 300);
         }
         
-        function receiveCreature(data) {
+        function receiveCreature(data, fromConn) {
             hasCreature = true;
             updateCreatureStatus();
-            
+
             // Position creature entering from opposite edge
             const oppositeEdge = {
                 'left': 'right',
@@ -426,43 +426,43 @@
                 'top': 'bottom',
                 'bottom': 'top'
             }[data.fromEdge];
-            
+
             blob.enteringFrom = oppositeEdge;
-            
+
             // Set entry position
             switch (oppositeEdge) {
                 case 'left':
                     blob.x = -blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = Math.abs(data.velocity?.x || 2);
+                    blob.velocityX = Math.abs(data.velocity?.x || 2.4);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'right':
                     blob.x = width + blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = -Math.abs(data.velocity?.x || 2);
+                    blob.velocityX = -Math.abs(data.velocity?.x || 2.4);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'top':
                     blob.x = width / 2;
                     blob.y = -blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = Math.abs(data.velocity?.y || 2);
+                    blob.velocityY = Math.abs(data.velocity?.y || 2.4);
                     break;
                 case 'bottom':
                     blob.x = width / 2;
                     blob.y = height + blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = -Math.abs(data.velocity?.y || 2);
+                    blob.velocityY = -Math.abs(data.velocity?.y || 2.4);
                     break;
             }
-            
+
             blob.visible = true;
-            
-            // Send confirmation
-            connections.forEach(conn => {
-                conn.send({ type: 'creature-received' });
-            });
+
+            // Send confirmation back to the sender only
+            if (fromConn) {
+                fromConn.send({ type: 'creature-received' });
+            }
         }
         
         // Accelerometer for bump detection
@@ -687,8 +687,8 @@
             
             // Limit speed
             const speed = Math.sqrt(blob.velocityX ** 2 + blob.velocityY ** 2);
-            const maxSpeed = 2;
-            const minSpeed = 0.8;
+            const maxSpeed = 2.4;
+            const minSpeed = 0.96;
             if (speed > maxSpeed) {
                 blob.velocityX = (blob.velocityX / speed) * maxSpeed;
                 blob.velocityY = (blob.velocityY / speed) * maxSpeed;
