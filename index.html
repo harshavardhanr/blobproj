@@ -242,8 +242,8 @@
             baseRadius: 60,
             numPoints: 16,
             points: [],
-            velocityX: (Math.random() - 0.5) * 1.8,
-            velocityY: (Math.random() - 0.5) * 1.8,
+            velocityX: (Math.random() - 0.5) * 2.7,
+            velocityY: (Math.random() - 0.5) * 2.7,
             squishX: 1,
             squishY: 1,
             targetSquishX: 1,
@@ -299,6 +299,21 @@
             if (edges.top) return 'top';
             if (edges.bottom) return 'bottom';
             return null;
+        }
+
+        function getClosestEdge() {
+            // Find closest edge based on creature position
+            const distToLeft = blob.x;
+            const distToRight = width - blob.x;
+            const distToTop = blob.y;
+            const distToBottom = height - blob.y;
+
+            const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
+
+            if (minDist === distToLeft) return 'left';
+            if (minDist === distToRight) return 'right';
+            if (minDist === distToTop) return 'top';
+            return 'bottom';
         }
         
         // Initialize PeerJS
@@ -392,15 +407,14 @@
         
         function handleRemoteBump(data, fromConn) {
             const now = Date.now();
-            const timeDiff = Math.abs(now - data.timestamp);
-            
-            // If bumps happened within 500ms of each other, it's a valid transfer
-            if (timeDiff < 500 && hasCreature) {
-                const edge = getCurrentEdge();
-                if (edge) {
-                    // Transfer the creature!
-                    transferCreature(fromConn, edge);
-                }
+            const timeSinceLocalBump = now - lastBumpTime;
+
+            // If we also bumped recently (within 500ms), it's a valid transfer
+            if (timeSinceLocalBump < 500 && hasCreature) {
+                // Use current edge if at edge, otherwise use closest edge
+                const edge = getCurrentEdge() || getClosestEdge();
+                // Transfer the creature!
+                transferCreature(fromConn, edge);
             }
         }
         
@@ -438,26 +452,26 @@
                 case 'left':
                     blob.x = -blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = Math.abs(data.velocity?.x || 2.4);
+                    blob.velocityX = Math.abs(data.velocity?.x || 3.6);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'right':
                     blob.x = width + blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = -Math.abs(data.velocity?.x || 2.4);
+                    blob.velocityX = -Math.abs(data.velocity?.x || 3.6);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'top':
                     blob.x = width / 2;
                     blob.y = -blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = Math.abs(data.velocity?.y || 2.4);
+                    blob.velocityY = Math.abs(data.velocity?.y || 3.6);
                     break;
                 case 'bottom':
                     blob.x = width / 2;
                     blob.y = height + blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = -Math.abs(data.velocity?.y || 2.4);
+                    blob.velocityY = -Math.abs(data.velocity?.y || 3.6);
                     break;
             }
 
@@ -691,8 +705,8 @@
             
             // Limit speed
             const speed = Math.sqrt(blob.velocityX ** 2 + blob.velocityY ** 2);
-            const maxSpeed = 2.4;
-            const minSpeed = 0.96;
+            const maxSpeed = 3.6;
+            const minSpeed = 1.44;
             if (speed > maxSpeed) {
                 blob.velocityX = (blob.velocityX / speed) * maxSpeed;
                 blob.velocityY = (blob.velocityY / speed) * maxSpeed;
