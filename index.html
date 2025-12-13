@@ -242,8 +242,8 @@
             baseRadius: 60,
             numPoints: 16,
             points: [],
-            velocityX: (Math.random() - 0.5) * 1.5,
-            velocityY: (Math.random() - 0.5) * 1.5,
+            velocityX: (Math.random() - 0.5) * 1.8,
+            velocityY: (Math.random() - 0.5) * 1.8,
             squishX: 1,
             squishY: 1,
             targetSquishX: 1,
@@ -434,26 +434,26 @@
                 case 'left':
                     blob.x = -blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = Math.abs(data.velocity?.x || 2);
+                    blob.velocityX = Math.abs(data.velocity?.x || 2.4);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'right':
                     blob.x = width + blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = -Math.abs(data.velocity?.x || 2);
+                    blob.velocityX = -Math.abs(data.velocity?.x || 2.4);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'top':
                     blob.x = width / 2;
                     blob.y = -blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = Math.abs(data.velocity?.y || 2);
+                    blob.velocityY = Math.abs(data.velocity?.y || 2.4);
                     break;
                 case 'bottom':
                     blob.x = width / 2;
                     blob.y = height + blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = -Math.abs(data.velocity?.y || 2);
+                    blob.velocityY = -Math.abs(data.velocity?.y || 2.4);
                     break;
             }
 
@@ -687,8 +687,8 @@
             
             // Limit speed
             const speed = Math.sqrt(blob.velocityX ** 2 + blob.velocityY ** 2);
-            const maxSpeed = 2;
-            const minSpeed = 0.8;
+            const maxSpeed = 2.4;
+            const minSpeed = 0.96;
             if (speed > maxSpeed) {
                 blob.velocityX = (blob.velocityX / speed) * maxSpeed;
                 blob.velocityY = (blob.velocityY / speed) * maxSpeed;
