@@ -392,10 +392,10 @@
         
         function handleRemoteBump(data, fromConn) {
             const now = Date.now();
-            const timeDiff = Math.abs(now - data.timestamp);
-            
-            // If bumps happened within 500ms of each other, it's a valid transfer
-            if (timeDiff < 500 && hasCreature) {
+            const timeSinceLocalBump = now - lastBumpTime;
+
+            // If we also bumped recently (within 500ms), it's a valid transfer
+            if (timeSinceLocalBump < 500 && hasCreature) {
                 const edge = getCurrentEdge();
                 if (edge) {
                     // Transfer the creature!
