@@ -212,9 +212,9 @@
         
         // Bump detection
         let lastAcceleration = { x: 0, y: 0, z: 0 };
-        let bumpThreshold = 25;
+        let bumpThreshold = 15; // Lower threshold = more sensitive
         let lastBumpTime = 0;
-        let bumpCooldown = 1000; // 1 second cooldown
+        let bumpCooldown = 800; // Reduced cooldown for faster detection
         let pendingTransfer = false;
         let transferDirection = null;
         
