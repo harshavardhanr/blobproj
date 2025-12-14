@@ -423,6 +423,9 @@
             hasCreature = true;
             updateCreatureStatus();
 
+            // Clear any previous animation state
+            blob.exitingTo = null;
+
             // Position creature entering from opposite edge
             const oppositeEdge = {
                 'left': 'right',
