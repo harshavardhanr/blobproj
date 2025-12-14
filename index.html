@@ -212,9 +212,9 @@
         
         // Bump detection
         let lastAcceleration = { x: 0, y: 0, z: 0 };
-        let bumpThreshold = 15; // Lower threshold = more sensitive
+        let bumpThreshold = 25;
         let lastBumpTime = 0;
-        let bumpCooldown = 800; // Reduced cooldown for faster detection
+        let bumpCooldown = 1000; // 1 second cooldown
         let pendingTransfer = false;
         let transferDirection = null;
         
@@ -242,8 +242,8 @@
             baseRadius: 60,
             numPoints: 16,
             points: [],
-            velocityX: (Math.random() - 0.5) * 2.7,
-            velocityY: (Math.random() - 0.5) * 2.7,
+            velocityX: (Math.random() - 0.5) * 2.25,
+            velocityY: (Math.random() - 0.5) * 2.25,
             squishX: 1,
             squishY: 1,
             targetSquishX: 1,
@@ -299,21 +299,6 @@
             if (edges.top) return 'top';
             if (edges.bottom) return 'bottom';
             return null;
-        }
-
-        function getClosestEdge() {
-            // Find closest edge based on creature position
-            const distToLeft = blob.x;
-            const distToRight = width - blob.x;
-            const distToTop = blob.y;
-            const distToBottom = height - blob.y;
-
-            const minDist = Math.min(distToLeft, distToRight, distToTop, distToBottom);
-
-            if (minDist === distToLeft) return 'left';
-            if (minDist === distToRight) return 'right';
-            if (minDist === distToTop) return 'top';
-            return 'bottom';
         }
         
         // Initialize PeerJS
@@ -375,10 +360,6 @@
             const peerId = 'blob-' + code.toUpperCase();
             const conn = myPeer.connect(peerId);
             setupConnection(conn);
-
-            // Joining device starts without the creature
-            hasCreature = false;
-            updateCreatureStatus();
         }
         
         function handleMessage(data, fromConn) {
@@ -407,14 +388,15 @@
         
         function handleRemoteBump(data, fromConn) {
             const now = Date.now();
-            const timeSinceLocalBump = now - lastBumpTime;
-
-            // If we also bumped recently (within 500ms), it's a valid transfer
-            if (timeSinceLocalBump < 500 && hasCreature) {
-                // Use current edge if at edge, otherwise use closest edge
-                const edge = getCurrentEdge() || getClosestEdge();
-                // Transfer the creature!
-                transferCreature(fromConn, edge);
+            const timeDiff = Math.abs(now - data.timestamp);
+            
+            // If bumps happened within 500ms of each other, it's a valid transfer
+            if (timeDiff < 500 && hasCreature) {
+                const edge = getCurrentEdge();
+                if (edge) {
+                    // Transfer the creature!
+                    transferCreature(fromConn, edge);
+                }
             }
         }
         
@@ -452,26 +434,26 @@
                 case 'left':
                     blob.x = -blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = Math.abs(data.velocity?.x || 3.6);
+                    blob.velocityX = Math.abs(data.velocity?.x || 3.0);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'right':
                     blob.x = width + blob.baseRadius;
                     blob.y = height / 2;
-                    blob.velocityX = -Math.abs(data.velocity?.x || 3.6);
+                    blob.velocityX = -Math.abs(data.velocity?.x || 3.0);
                     blob.velocityY = data.velocity?.y || 0;
                     break;
                 case 'top':
                     blob.x = width / 2;
                     blob.y = -blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = Math.abs(data.velocity?.y || 3.6);
+                    blob.velocityY = Math.abs(data.velocity?.y || 3.0);
                     break;
                 case 'bottom':
                     blob.x = width / 2;
                     blob.y = height + blob.baseRadius;
                     blob.velocityX = data.velocity?.x || 0;
-                    blob.velocityY = -Math.abs(data.velocity?.y || 3.6);
+                    blob.velocityY = -Math.abs(data.velocity?.y || 3.0);
                     break;
             }
 
@@ -705,8 +687,8 @@
             
             // Limit speed
             const speed = Math.sqrt(blob.velocityX ** 2 + blob.velocityY ** 2);
-            const maxSpeed = 3.6;
-            const minSpeed = 1.44;
+            const maxSpeed = 3.0;
+            const minSpeed = 1.2;
             if (speed > maxSpeed) {
                 blob.velocityX = (blob.velocityX / speed) * maxSpeed;
                 blob.velocityY = (blob.velocityY / speed) * maxSpeed;
