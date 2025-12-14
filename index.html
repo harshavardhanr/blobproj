@@ -360,6 +360,10 @@
             const peerId = 'blob-' + code.toUpperCase();
             const conn = myPeer.connect(peerId);
             setupConnection(conn);
+
+            // Joining device starts without the creature
+            hasCreature = false;
+            updateCreatureStatus();
         }
         
         function handleMessage(data, fromConn) {
